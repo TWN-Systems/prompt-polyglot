@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use prompt_compress::{
-    init_optimizer, load_corpus, save_corpus, DirectiveFormat, Language, OptimizationRequest,
+    init_optimizer, DirectiveFormat, Language, OptimizationRequest,
 };
 use std::path::PathBuf;
 

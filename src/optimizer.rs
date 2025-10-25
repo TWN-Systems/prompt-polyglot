@@ -2,7 +2,7 @@ use crate::confidence::{extract_context, ConfidenceCalculator};
 use crate::models::{
     DirectiveFormat, Language, Optimization, OptimizationRequest, OptimizationResult,
 };
-use crate::patterns::{DetectedPattern, PatternDetector};
+use crate::patterns::PatternDetector;
 use crate::tokenizer::Tokenizer;
 use anyhow::Result;
 use uuid::Uuid;
@@ -116,7 +116,7 @@ impl Optimizer {
         // Sort by start position
         optimizations.sort_by_key(|opt| opt.start_pos);
 
-        let mut resolved = Vec::new();
+        let mut resolved: Vec<Optimization> = Vec::new();
         let mut last_end = 0;
 
         for opt in optimizations {

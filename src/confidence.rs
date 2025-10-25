@@ -54,7 +54,7 @@ impl ConfidenceCalculator {
 
     /// Assess risk based on context
     fn assess_context_risk(&self, pattern: &DetectedPattern, context: &Context) -> f64 {
-        let mut penalty = 0.0;
+        let mut penalty: f64 = 0.0;
 
         // Technical contexts may need more precision
         if context.is_technical {
@@ -97,7 +97,7 @@ impl ConfidenceCalculator {
 
     /// Calculate semantic risk of losing meaning
     fn calculate_semantic_risk(&self, pattern: &DetectedPattern, context: &Context) -> f64 {
-        let mut risk = 0.0;
+        let mut risk: f64 = 0.0;
 
         // Empty replacements have higher risk if not pure boilerplate
         if pattern.optimized_text.is_empty() {
