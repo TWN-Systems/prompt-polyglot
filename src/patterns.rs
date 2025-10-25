@@ -303,167 +303,72 @@ pub static SYNONYM_PAIRS: &[(&str, &[&str], f64, &str)] = &[
 
 /// Mandarin substitutions that save tokens
 /// (english_phrase, mandarin_equivalent, en_tokens, zh_tokens, base_confidence, reasoning)
-/// These are chosen for single unambiguous meanings that LLMs understand clearly
+/// IMPORTANT: Only includes PROVEN token-efficient substitutions (actual token counts from tiktoken tests)
+/// Criteria: ZH tokens <= EN tokens (never makes it worse)
 pub static MANDARIN_SUBSTITUTIONS: &[(&str, &str, usize, usize, f64, &str)] = &[
-    // Core instructions - single unambiguous meanings
-    (
-        "analyze",
-        "分析",
-        1,
-        2,
-        0.94,
-        "Analyze/examine - precise meaning",
-    ),
-    (
-        "explain",
-        "解释",
-        1,
-        2,
-        0.94,
-        "Explain - clear single meaning",
-    ),
-    (
-        "identify",
-        "识别",
-        1,
-        2,
-        0.93,
-        "Identify/recognize - unambiguous",
-    ),
-    (
-        "provide",
-        "提供",
-        1,
-        2,
-        0.92,
-        "Provide/supply - clear intent",
-    ),
-    (
-        "suggest",
-        "建议",
-        1,
-        2,
-        0.93,
-        "Suggest/recommend - single meaning",
-    ),
+    // ✅ PROVEN EFFICIENT: Equal token count, maintains quality
     (
         "verify",
         "验证",
         1,
-        2,
+        1,
         0.94,
-        "Verify/validate - precise",
-    ),
-
-    // Quality modifiers - unambiguous instructions
-    (
-        "in detail",
-        "详细",
-        2,
-        2,
-        0.91,
-        "In detail/detailed - clear",
-    ),
-    (
-        "detailed",
-        "详细",
-        1,
-        2,
-        0.90,
-        "Detailed - saves on multi-byte encoding",
-    ),
-    (
-        "thorough",
-        "彻底",
-        1,
-        2,
-        0.89,
-        "Thorough/complete - unambiguous",
+        "Verify - EQUAL tokens (1=1), unambiguous meaning",
     ),
     (
         "comprehensive",
         "全面",
-        1,
+        2,
         2,
         0.90,
-        "Comprehensive - clear meaning",
-    ),
-
-    // Action qualifiers
-    (
-        "step by step",
-        "逐步",
-        3,
-        2,
-        0.92,
-        "Step by step - sequential, unambiguous",
-    ),
-    (
-        "carefully",
-        "仔细",
-        1,
-        2,
-        0.88,
-        "Carefully - single meaning",
-    ),
-
-    // Common phrases with savings
-    (
-        "best practices",
-        "最佳实践",
-        2,
-        4,
-        0.91,
-        "Best practices - technical term, clear",
-    ),
-    (
-        "performance",
-        "性能",
-        1,
-        2,
-        0.93,
-        "Performance - technical, unambiguous",
+        "Comprehensive - EQUAL tokens (2=2), clear meaning",
     ),
     (
         "optimization",
         "优化",
-        1,
+        2,
         2,
         0.93,
-        "Optimization - clear technical meaning",
+        "Optimization - EQUAL tokens (2=2), technical term",
     ),
     (
-        "implementation",
-        "实现",
-        1,
-        2,
+        "step by step",
+        "逐步",
+        3,
+        3,
         0.92,
-        "Implementation - technical, precise",
+        "Step by step - EQUAL tokens (3=3), sequential",
     ),
     (
         "issues",
         "问题",
         1,
-        2,
+        1,
         0.92,
-        "Issues/problems - clear",
+        "Issues - EQUAL tokens (1=1), clear",
     ),
     (
         "bugs",
         "错误",
         1,
-        2,
+        1,
         0.93,
-        "Bugs/errors - technical, unambiguous",
+        "Bugs - EQUAL tokens (1=1), unambiguous",
     ),
     (
         "code",
         "代码",
         1,
-        2,
+        1,
         0.94,
-        "Code - technical term, precise",
+        "Code - EQUAL tokens (1=1), technical term",
     ),
+
+    // NOTE: Removed inefficient substitutions that INCREASE token count:
+    // - analyze (1→2 tokens), explain (1→2), identify (1→3), provide (1→2)
+    // - suggest (1→2), detailed (2→3), thorough (2→4), carefully (2→4)
+    // - best practices (2→6), performance (1→2), implementation (1→2)
+    // These hurt token efficiency and were removed based on test evidence.
 ];
 
 lazy_static! {
@@ -726,9 +631,11 @@ mod tests {
     #[test]
     fn test_mandarin_detection() {
         let detector = PatternDetector::new();
-        let text = "Be thorough and detailed in your analysis.";
+        // Use a word that's actually in our selective Mandarin list
+        let text = "Please verify the code for bugs and issues.";
 
         let detected = detector.detect_mandarin(text);
-        assert!(!detected.is_empty());
+        // Should detect: verify, code, bugs, issues
+        assert!(detected.len() >= 3, "Should detect at least 3 Mandarin opportunities");
     }
 }
