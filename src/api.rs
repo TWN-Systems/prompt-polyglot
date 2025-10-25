@@ -19,6 +19,13 @@ pub async fn health_check() -> impl Responder {
     }))
 }
 
+/// Lightweight liveness probe for container orchestrators
+pub async fn liveness_probe() -> impl Responder {
+    HttpResponse::Ok()
+        .content_type("text/plain; charset=utf-8")
+        .body("ok")
+}
+
 /// Optimize a prompt
 pub async fn optimize_prompt(
     data: web::Data<AppState>,
@@ -292,13 +299,14 @@ pub struct ErrorResponse {
 
 /// Configure API routes
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
-    cfg.service(
-        web::scope("/api/v1")
-            .route("/health", web::get().to(health_check))
-            .route("/optimize", web::post().to(optimize_prompt))
-            .route("/analyze", web::post().to(analyze_prompt))
-            .route("/webhook/optimize", web::post().to(webhook_optimize))
-            .route("/review/{session_id}", web::get().to(get_review_session))
-            .route("/review/{session_id}", web::post().to(submit_review)),
-    );
+    cfg.route("/healthz", web::get().to(liveness_probe))
+        .service(
+            web::scope("/api/v1")
+                .route("/health", web::get().to(health_check))
+                .route("/optimize", web::post().to(optimize_prompt))
+                .route("/analyze", web::post().to(analyze_prompt))
+                .route("/webhook/optimize", web::post().to(webhook_optimize))
+                .route("/review/{session_id}", web::get().to(get_review_session))
+                .route("/review/{session_id}", web::post().to(submit_review)),
+        );
 }

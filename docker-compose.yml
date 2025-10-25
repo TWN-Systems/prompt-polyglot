@@ -1,0 +1,27 @@
+version: '3.9'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: prompt-polyglot-api:local
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/prompt-compress-healthcheck", "http://api:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    image: prompt-polyglot-web:local
+    environment:
+      PUBLIC_API_BASE: http://api:8080
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
