@@ -5,6 +5,14 @@ pub mod optimizer;
 pub mod patterns;
 pub mod tokenizer;
 
+// Phase 3: Concept Atlas modules
+pub mod tokenizer_registry;
+pub mod database;
+pub mod concept_resolver;
+pub mod surface_selector;
+pub mod protected_regions;
+pub mod concept_optimizer;
+
 pub use confidence::{extract_context, ConfidenceCalculator, Context};
 pub use models::{
     Config, DirectiveFormat, Language, Optimization, OptimizationConfidence, OptimizationCorpus,
@@ -14,6 +22,12 @@ pub use models::{
 pub use optimizer::Optimizer;
 pub use patterns::{DetectedPattern, Pattern, PatternDetector};
 pub use tokenizer::Tokenizer;
+pub use tokenizer_registry::{TokenizerBackend, TokenizerId, TokenizerRegistry};
+pub use database::{Concept, Database, DatabaseStats, SurfaceForm};
+pub use concept_resolver::{CacheStats, ConceptResolver, ResolutionPolicy};
+pub use surface_selector::{OptimizationCandidate, SelectionPolicy, SurfaceSelector};
+pub use protected_regions::{ProtectedRegion, ProtectedRegionDetector, ProtectionPolicy, RegionType};
+pub use concept_optimizer::{ConceptOptimizer, OptimizerStats};
 
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

@@ -371,6 +371,120 @@ pub static MANDARIN_SUBSTITUTIONS: &[(&str, &str, usize, usize, f64, &str)] = &[
     // These hurt token efficiency and were removed based on test evidence.
 ];
 
+/// Structural optimizations - Units, numbers, formatting
+/// Based on empirical findings: "10km" is more token-efficient than "ten kilometers"
+pub static STRUCTURAL_PATTERNS: &[(&str, &str, f64, &str)] = &[
+    // Units - normalize to compact form
+    (
+        r"\b(\d+)\s*kilometers?\b",
+        "${1}km",
+        0.93,
+        "Normalize kilometers to km (3 tokens → 2 tokens)"
+    ),
+    (
+        r"\b(\d+)\s*meters?\b",
+        "${1}m",
+        0.93,
+        "Normalize meters to m"
+    ),
+    (
+        r"\b(\d+)\s*minutes?\b",
+        "${1}min",
+        0.92,
+        "Normalize minutes to min (3 tokens → 2 tokens)"
+    ),
+    (
+        r"\b(\d+)\s*seconds?\b",
+        "${1}s",
+        0.92,
+        "Normalize seconds to s"
+    ),
+    (
+        r"\b(\d+)\s*percent\b",
+        "${1}%",
+        0.95,
+        "Normalize percent to % (3 tokens → 2 tokens)"
+    ),
+    (
+        r"\b(\d+)\s*dollars?\b",
+        "$${1}",
+        0.90,
+        "Normalize dollars to $ prefix"
+    ),
+
+    // Excess whitespace and formatting
+    (
+        r"\n\n\n+",
+        "\n\n",
+        0.95,
+        "Collapse excessive newlines (>2 → 2)"
+    ),
+    (
+        r"  +",
+        " ",
+        0.94,
+        "Collapse multiple spaces to single space"
+    ),
+    (
+        r"={3,}",
+        "",
+        0.88,
+        "Remove decorative separators (===)"
+    ),
+    (
+        r"-{3,}",
+        "",
+        0.88,
+        "Remove decorative separators (---)"
+    ),
+    (
+        r"\*{3,}",
+        "",
+        0.88,
+        "Remove decorative separators (***)"
+    ),
+
+    // Verbose JSON/structure keywords
+    (
+        r#""description":\s*"#,
+        r#""desc":"#,
+        0.85,
+        "Shorten JSON key: description → desc"
+    ),
+    (
+        r#""configuration":\s*"#,
+        r#""config":"#,
+        0.85,
+        "Shorten JSON key: configuration → config"
+    ),
+    (
+        r#""parameters":\s*"#,
+        r#""params":"#,
+        0.85,
+        "Shorten JSON key: parameters → params"
+    ),
+
+    // Excessive punctuation
+    (
+        r"\.{2,}",
+        ".",
+        0.90,
+        "Normalize ellipsis to single period"
+    ),
+    (
+        r"!{2,}",
+        "!",
+        0.90,
+        "Collapse multiple exclamation marks"
+    ),
+    (
+        r"\?{2,}",
+        "?",
+        0.90,
+        "Collapse multiple question marks"
+    ),
+];
+
 lazy_static! {
     /// Compiled boilerplate patterns
     pub static ref BOILERPLATE_REGEXES: Vec<Pattern> = {
@@ -416,6 +530,22 @@ lazy_static! {
             })
             .collect()
     };
+
+    /// Compiled structural optimization patterns
+    pub static ref STRUCTURAL_REGEXES: Vec<Pattern> = {
+        STRUCTURAL_PATTERNS
+            .iter()
+            .filter_map(|(pattern, replacement, confidence, reasoning)| {
+                Regex::new(pattern).ok().map(|regex| Pattern {
+                    pattern_type: OptimizationType::FormatConsolidation,
+                    regex,
+                    replacement: replacement.to_string(),
+                    base_confidence: *confidence,
+                    reasoning: reasoning.to_string(),
+                })
+            })
+            .collect()
+    };
 }
 
 /// Pattern detector engine
@@ -430,6 +560,7 @@ impl PatternDetector {
     pub fn detect_all(&self, text: &str) -> Vec<DetectedPattern> {
         let mut detected = Vec::new();
 
+        detected.extend(self.detect_structural(text));
         detected.extend(self.detect_boilerplate(text));
         detected.extend(self.detect_instructions(text));
         detected.extend(self.detect_redundant_phrases(text));
@@ -439,6 +570,28 @@ impl PatternDetector {
 
         // Sort by position to handle overlaps later
         detected.sort_by_key(|d| d.start_pos);
+        detected
+    }
+
+    /// Detect structural optimization opportunities
+    fn detect_structural(&self, text: &str) -> Vec<DetectedPattern> {
+        let mut detected = Vec::new();
+
+        for pattern in STRUCTURAL_REGEXES.iter() {
+            for mat in pattern.regex.find_iter(text) {
+                let optimized = pattern.regex.replace(mat.as_str(), &pattern.replacement);
+                detected.push(DetectedPattern {
+                    pattern_type: OptimizationType::FormatConsolidation,
+                    original_text: mat.as_str().to_string(),
+                    optimized_text: optimized.to_string(),
+                    start_pos: mat.start(),
+                    end_pos: mat.end(),
+                    base_confidence: pattern.base_confidence,
+                    reasoning: pattern.reasoning.clone(),
+                });
+            }
+        }
+
         detected
     }
 
@@ -637,5 +790,40 @@ mod tests {
         let detected = detector.detect_mandarin(text);
         // Should detect: verify, code, bugs, issues
         assert!(detected.len() >= 3, "Should detect at least 3 Mandarin opportunities");
+    }
+
+    #[test]
+    fn test_structural_detection() {
+        let detector = PatternDetector::new();
+        let text = "The distance is 10 kilometers and it takes 5 minutes at 50 percent speed.";
+
+        let detected = detector.detect_structural(text);
+        // Should detect: "10 kilometers" → "10km", "5 minutes" → "5min", "50 percent" → "50%"
+        assert!(detected.len() >= 3, "Should detect at least 3 structural optimizations");
+
+        // Verify one of the detections
+        let km_opt = detected.iter().find(|d| d.original_text.contains("kilometer"));
+        assert!(km_opt.is_some());
+        assert!(km_opt.unwrap().optimized_text.contains("km"));
+    }
+
+    #[test]
+    fn test_structural_formatting() {
+        let detector = PatternDetector::new();
+        let text = "===\nCheck this!!!\nIs this right???\nWait...\n\n\n\nNext section.";
+
+        let detected = detector.detect_structural(text);
+        // Should detect: ===, !!!, ???, ..., \n\n\n+
+        assert!(detected.len() >= 4, "Should detect formatting optimizations: found {}", detected.len());
+    }
+
+    #[test]
+    fn test_structural_json_keys() {
+        let detector = PatternDetector::new();
+        let text = r#"{"description": "test", "configuration": "prod", "parameters": {}}"#;
+
+        let detected = detector.detect_structural(text);
+        // Should detect: description → desc, configuration → config, parameters → params
+        assert!(detected.len() >= 3, "Should detect JSON key shortenings");
     }
 }

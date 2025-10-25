@@ -22,6 +22,19 @@ lazy_static = "1.4"
 # Tokenization (using tiktoken-rs for OpenAI-compatible tokenization)
 tiktoken-rs = "0.5"
 
+# Phase 3: Multi-tokenizer support
+tokenizers = "0.20"  # HuggingFace tokenizers (Llama, Claude, etc.)
+
+# Phase 3: Database for concept atlas
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+# Phase 3: Caching and hashing
+sha2 = "0.10"
+lru = "0.12"
+
+# Phase 3: Text normalization
+unicode-normalization = "0.1"
+
 # CLI
 clap = { version = "4.4", features = ["derive"] }
 
