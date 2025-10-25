@@ -1,0 +1,61 @@
+[package]
+name = "prompt-compress"
+version = "1.0.0"
+edition = "2021"
+authors = ["Prompt Polyglot Team"]
+description = "Optimize prompts with multilingual token compression and Bayesian confidence scoring"
+license = "MIT"
+
+[dependencies]
+# Web framework for API
+actix-web = "4.4"
+actix-rt = "2.9"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Regex for pattern matching
+regex = "1.10"
+lazy_static = "1.4"
+
+# Tokenization (using tiktoken-rs for OpenAI-compatible tokenization)
+tiktoken-rs = "0.5"
+
+# CLI
+clap = { version = "4.4", features = ["derive"] }
+
+# Configuration
+toml = "0.8"
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# UUID for session IDs
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# HashMap improvements
+indexmap = "2.1"
+
+# HTTP client for webhooks
+reqwest = { version = "0.11", features = ["json"] }
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[lib]
+name = "prompt_compress"
+path = "src/lib.rs"
+
+[[bin]]
+name = "prompt-compress"
+path = "src/main.rs"
+
+[[bin]]
+name = "prompt-compress-server"
+path = "src/bin/server.rs"
