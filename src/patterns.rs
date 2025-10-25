@@ -210,6 +210,44 @@ pub static FILLER_WORDS: &[(&str, f64, &str)] = &[
     (r"(?i)\bliterally\b", 0.89, "Overused intensifier"),
 ];
 
+/// Instruction compression patterns - verbose instructions to imperatives
+/// (pattern, replacement, confidence, reasoning)
+pub static INSTRUCTION_PATTERNS: &[(&str, &str, f64, &str)] = &[
+    (r"(?i)I want you to\s+", "", 0.92, "Verbose instruction prefix"),
+    (r"(?i)I would like you to\s+", "", 0.91, "Verbose instruction prefix"),
+    (r"(?i)I need you to\s+", "", 0.93, "Direct instruction prefix"),
+    (r"(?i)I would also like you to\s+", "", 0.91, "Verbose continuation"),
+    (r"(?i)take the time to\s+", "", 0.94, "Verbose padding"),
+    (r"(?i)carefully\s+", "", 0.83, "Implicit in technical tasks"),
+];
+
+/// Redundant phrase consolidation
+/// (pattern, replacement, confidence, reasoning)
+pub static REDUNDANT_PHRASES: &[(&str, &str, f64, &str)] = &[
+    // Redundant qualifiers
+    (r"(?i)very\s+detailed\s+and\s+thorough", "detailed", 0.92, "Redundant qualifiers"),
+    (r"(?i)detailed\s+and\s+thorough", "detailed", 0.91, "Redundant qualifiers"),
+
+    // Synonym pairs
+    (r"(?i)problems?\s+(or|and)\s+issues", "issues", 0.89, "Synonyms"),
+    (r"(?i)bugs?\s+(or|and)\s+issues", "bugs", 0.88, "Synonyms"),
+    (r"(?i)improve(d)?\s+or\s+optimize(d)?", "optimized", 0.90, "Optimize is subset of improve"),
+
+    // Implied context
+    (r"(?i)that\s+I'?m\s+working\s+on", "", 0.87, "Implied context"),
+    (r"(?i)that\s+you\s+might\s+find", "", 0.86, "Implied action"),
+    (r"(?i)this\s+code\s+snippet", "this code", 0.88, "Redundant 'snippet'"),
+    (r"(?i)any\s+potential\s+", "", 0.85, "Redundant qualifiers"),
+
+    // Conjunction compression
+    (r"(?i),?\s+and\s+why\s+it\s+was\s+implemented", ", why implemented", 0.87, "Concise phrasing"),
+    (r"(?i)how\s+it\s+works,?\s+and\s+why", "how/why", 0.86, "Conjunction slash"),
+
+    // Verbose phrases
+    (r"(?i)provide\s+detailed\s+suggestions\s+on\s+how\s+to\s+fix", "suggest fixes for", 0.89, "Concise phrasing"),
+    (r"(?i)If\s+you\s+find\s+any\s+", "For any ", 0.84, "Passive conditional"),
+];
+
 /// Synonym pairs where consolidation saves tokens
 /// (preferred_term, alternatives, base_confidence, reasoning)
 pub static SYNONYM_PAIRS: &[(&str, &[&str], f64, &str)] = &[
@@ -265,62 +303,166 @@ pub static SYNONYM_PAIRS: &[(&str, &[&str], f64, &str)] = &[
 
 /// Mandarin substitutions that save tokens
 /// (english_phrase, mandarin_equivalent, en_tokens, zh_tokens, base_confidence, reasoning)
+/// These are chosen for single unambiguous meanings that LLMs understand clearly
 pub static MANDARIN_SUBSTITUTIONS: &[(&str, &str, usize, usize, f64, &str)] = &[
+    // Core instructions - single unambiguous meanings
     (
-        "Be thorough and detailed",
-        "要详细",
-        5,
-        3,
-        0.86,
-        "Common instruction for thoroughness",
+        "analyze",
+        "分析",
+        1,
+        2,
+        0.94,
+        "Analyze/examine - precise meaning",
     ),
     (
-        "Step by step",
+        "explain",
+        "解释",
+        1,
+        2,
+        0.94,
+        "Explain - clear single meaning",
+    ),
+    (
+        "identify",
+        "识别",
+        1,
+        2,
+        0.93,
+        "Identify/recognize - unambiguous",
+    ),
+    (
+        "provide",
+        "提供",
+        1,
+        2,
+        0.92,
+        "Provide/supply - clear intent",
+    ),
+    (
+        "suggest",
+        "建议",
+        1,
+        2,
+        0.93,
+        "Suggest/recommend - single meaning",
+    ),
+    (
+        "verify",
+        "验证",
+        1,
+        2,
+        0.94,
+        "Verify/validate - precise",
+    ),
+
+    // Quality modifiers - unambiguous instructions
+    (
+        "in detail",
+        "详细",
+        2,
+        2,
+        0.91,
+        "In detail/detailed - clear",
+    ),
+    (
+        "detailed",
+        "详细",
+        1,
+        2,
+        0.90,
+        "Detailed - saves on multi-byte encoding",
+    ),
+    (
+        "thorough",
+        "彻底",
+        1,
+        2,
+        0.89,
+        "Thorough/complete - unambiguous",
+    ),
+    (
+        "comprehensive",
+        "全面",
+        1,
+        2,
+        0.90,
+        "Comprehensive - clear meaning",
+    ),
+
+    // Action qualifiers
+    (
+        "step by step",
         "逐步",
         3,
+        2,
+        0.92,
+        "Step by step - sequential, unambiguous",
+    ),
+    (
+        "carefully",
+        "仔细",
         1,
-        0.89,
-        "Sequential instruction",
-    ),
-    (
-        "Make sure to",
-        "确保",
-        3,
-        2,
-        0.84,
-        "Ensure/make sure",
-    ),
-    (
-        "Focus on",
-        "专注于",
-        2,
-        3,
-        0.87,
-        "Attention directive",
-    ),
-    (
-        "Pay attention to",
-        "注意",
-        3,
         2,
         0.88,
-        "Attention directive",
+        "Carefully - single meaning",
+    ),
+
+    // Common phrases with savings
+    (
+        "best practices",
+        "最佳实践",
+        2,
+        4,
+        0.91,
+        "Best practices - technical term, clear",
     ),
     (
-        "Be comprehensive",
-        "要全面",
+        "performance",
+        "性能",
+        1,
         2,
-        3,
-        0.85,
-        "Comprehensiveness instruction",
+        0.93,
+        "Performance - technical, unambiguous",
     ),
     (
-        "In detail",
-        "详细地",
+        "optimization",
+        "优化",
+        1,
         2,
-        3,
-        0.86,
-        "Detail modifier",
+        0.93,
+        "Optimization - clear technical meaning",
+    ),
+    (
+        "implementation",
+        "实现",
+        1,
+        2,
+        0.92,
+        "Implementation - technical, precise",
+    ),
+    (
+        "issues",
+        "问题",
+        1,
+        2,
+        0.92,
+        "Issues/problems - clear",
+    ),
+    (
+        "bugs",
+        "错误",
+        1,
+        2,
+        0.93,
+        "Bugs/errors - technical, unambiguous",
+    ),
+    (
+        "code",
+        "代码",
+        1,
+        2,
+        0.94,
+        "Code - technical term, precise",
     ),
 ];
 
@@ -384,6 +526,8 @@ impl PatternDetector {
         let mut detected = Vec::new();
 
         detected.extend(self.detect_boilerplate(text));
+        detected.extend(self.detect_instructions(text));
+        detected.extend(self.detect_redundant_phrases(text));
         detected.extend(self.detect_fillers(text));
         detected.extend(self.detect_synonyms(text));
         detected.extend(self.detect_mandarin(text));
@@ -465,6 +609,52 @@ impl PatternDetector {
                             });
                         }
                     }
+                }
+            }
+        }
+
+        detected
+    }
+
+    /// Detect instruction compression opportunities
+    fn detect_instructions(&self, text: &str) -> Vec<DetectedPattern> {
+        let mut detected = Vec::new();
+
+        for (pattern_str, replacement, confidence, reasoning) in INSTRUCTION_PATTERNS {
+            if let Ok(regex) = Regex::new(pattern_str) {
+                for mat in regex.find_iter(text) {
+                    detected.push(DetectedPattern {
+                        pattern_type: OptimizationType::InstructionCompression,
+                        original_text: mat.as_str().to_string(),
+                        optimized_text: replacement.to_string(),
+                        start_pos: mat.start(),
+                        end_pos: mat.end(),
+                        base_confidence: *confidence,
+                        reasoning: reasoning.to_string(),
+                    });
+                }
+            }
+        }
+
+        detected
+    }
+
+    /// Detect redundant phrases
+    fn detect_redundant_phrases(&self, text: &str) -> Vec<DetectedPattern> {
+        let mut detected = Vec::new();
+
+        for (pattern_str, replacement, confidence, reasoning) in REDUNDANT_PHRASES {
+            if let Ok(regex) = Regex::new(pattern_str) {
+                for mat in regex.find_iter(text) {
+                    detected.push(DetectedPattern {
+                        pattern_type: OptimizationType::FormatConsolidation,
+                        original_text: mat.as_str().to_string(),
+                        optimized_text: replacement.to_string(),
+                        start_pos: mat.start(),
+                        end_pos: mat.end(),
+                        base_confidence: *confidence,
+                        reasoning: reasoning.to_string(),
+                    });
                 }
             }
         }

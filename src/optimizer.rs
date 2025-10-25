@@ -42,20 +42,24 @@ impl Optimizer {
                 50, // context window
             );
 
-            let confidence = self.calculator.calculate_confidence(&pattern, &context);
+            let confidence = self.calculator.calculate_confidence_with_mode(
+                &pattern,
+                &context,
+                request.aggressive_mode,
+            );
 
             // Calculate token savings for this optimization
             let token_savings = self
                 .tokenizer
                 .estimate_savings(&pattern.original_text, &pattern.optimized_text);
 
+            // Adjust threshold based on mode
+            let min_confidence = if request.aggressive_mode { 0.4 } else { 0.5 };
+            let auto_apply_threshold = if request.aggressive_mode { 0.70 } else { request.confidence_threshold };
+
             // Only include if meets minimum confidence and saves tokens
-            if confidence.final_confidence >= 0.5 && token_savings > 0 {
-                let requires_review = if request.aggressive_mode {
-                    confidence.final_confidence < 0.80
-                } else {
-                    confidence.final_confidence < request.confidence_threshold
-                };
+            if confidence.final_confidence >= min_confidence && token_savings > 0 {
+                let requires_review = confidence.final_confidence < auto_apply_threshold;
 
                 optimizations.push(Optimization {
                     id: Uuid::new_v4().to_string(),

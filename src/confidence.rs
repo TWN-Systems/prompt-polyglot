@@ -33,16 +33,32 @@ impl ConfidenceCalculator {
         pattern: &DetectedPattern,
         context: &Context,
     ) -> OptimizationConfidence {
+        self.calculate_confidence_with_mode(pattern, context, false)
+    }
+
+    /// Calculate confidence with optional aggressive mode
+    pub fn calculate_confidence_with_mode(
+        &self,
+        pattern: &DetectedPattern,
+        context: &Context,
+        aggressive: bool,
+    ) -> OptimizationConfidence {
         let base_confidence = pattern.base_confidence;
 
-        // Calculate context penalty
-        let context_penalty = self.assess_context_risk(pattern, context);
+        // Calculate context penalty (reduced in aggressive mode)
+        let mut context_penalty = self.assess_context_risk(pattern, context);
+        if aggressive {
+            context_penalty *= 0.5;  // Halve penalties in aggressive mode
+        }
 
         // Get frequency bonus from corpus
         let frequency_bonus = self.corpus.get_frequency_bonus(&pattern.original_text);
 
-        // Calculate semantic risk
-        let semantic_risk = self.calculate_semantic_risk(pattern, context);
+        // Calculate semantic risk (reduced in aggressive mode)
+        let mut semantic_risk = self.calculate_semantic_risk(pattern, context);
+        if aggressive {
+            semantic_risk *= 0.6;  // Reduce risk assessment
+        }
 
         OptimizationConfidence::new(
             base_confidence,
