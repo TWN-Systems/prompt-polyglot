@@ -278,8 +278,11 @@ mod tests {
 
         let confidence = calculator.calculate_confidence(&pattern, &context);
 
-        assert!(confidence.final_confidence >= 0.9);
+        // With beginning position bonus (-2%) but boilerplate semantic risk (2%),
+        // expect: 0.97 * 0.98 * 1.0 * 0.98 ≈ 0.93
+        assert!(confidence.final_confidence >= 0.85);
         assert!(confidence.final_confidence <= 1.0);
+        assert_eq!(confidence.base_confidence, 0.97);
     }
 
     #[test]

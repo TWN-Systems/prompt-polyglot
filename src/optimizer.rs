@@ -177,7 +177,45 @@ impl Optimizer {
         let text = text.replace(" .", ".").replace(" ,", ",");
         let text = text.replace(" !", "!").replace(" ?", "?");
 
-        text.trim().to_string()
+        let text = text.trim().to_string();
+
+        // Capitalize sentence starts
+        self.capitalize_sentences(&text)
+    }
+
+    /// Capitalize the first letter after sentence boundaries
+    fn capitalize_sentences(&self, text: &str) -> String {
+        if text.is_empty() {
+            return text.to_string();
+        }
+
+        let mut result = String::with_capacity(text.len());
+        let mut chars = text.chars().peekable();
+        let mut capitalize_next = true;  // First character should be capitalized
+
+        while let Some(ch) = chars.next() {
+            if capitalize_next && ch.is_alphabetic() {
+                result.extend(ch.to_uppercase());
+                capitalize_next = false;
+            } else {
+                result.push(ch);
+
+                // Set flag to capitalize after sentence boundaries
+                if matches!(ch, '.' | '!' | '?') {
+                    // Skip whitespace after punctuation
+                    while let Some(&next_ch) = chars.peek() {
+                        if next_ch.is_whitespace() {
+                            result.push(chars.next().unwrap());
+                        } else {
+                            break;
+                        }
+                    }
+                    capitalize_next = true;
+                }
+            }
+        }
+
+        result
     }
 
     /// Add language directive to prompt
@@ -309,5 +347,41 @@ mod tests {
         );
 
         assert!(result.contains("[output_language: english]"));
+    }
+
+    #[test]
+    fn test_capitalize_sentences() {
+        let optimizer = Optimizer::default();
+
+        assert_eq!(
+            optimizer.capitalize_sentences("hello. world"),
+            "Hello. World"
+        );
+        assert_eq!(
+            optimizer.capitalize_sentences("test! another. one?"),
+            "Test! Another. One?"
+        );
+        assert_eq!(
+            optimizer.capitalize_sentences("already Capitalized."),
+            "Already Capitalized."
+        );
+    }
+
+    #[test]
+    fn test_no_orphaned_phrases() {
+        let mut optimizer = Optimizer::default();
+
+        let request = OptimizationRequest {
+            prompt: "Thank you so much in advance for your help with this!".to_string(),
+            output_language: Language::English,
+            confidence_threshold: 0.85,
+            aggressive_mode: false,
+            directive_format: DirectiveFormat::Bracketed,
+        };
+
+        let result = optimizer.optimize(&request).unwrap();
+
+        // Should not contain orphaned "for your help with this!"
+        assert!(!result.optimized_prompt.contains("for your help"));
     }
 }
