@@ -70,10 +70,17 @@
 
     <label>
       Tokenizer
-      <select name="tokenizer_id" required value={payload.tokenizer_id}>
-        <option value="" disabled>Select a tokenizer</option>
+      <select name="tokenizer_id" required>
+        <option value="" disabled selected={!payload.tokenizer_id}>
+          Select a tokenizer
+        </option>
         {#each tokenizerOptions as option}
-          <option value={option.value}>{option.label}</option>
+          <option
+            value={option.value}
+            selected={option.value === payload.tokenizer_id}
+          >
+            {option.label}
+          </option>
         {/each}
       </select>
     </label>
