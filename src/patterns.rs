@@ -76,10 +76,16 @@ pub static BOILERPLATE_PATTERNS: &[(&str, &str, f64, &str)] = &[
         "Polite request prefix",
     ),
     (
-        r"(?i)I would like you to\s*",
+        r"(?i)I would (also )?like you to\s*",
         "",
         0.96,
         "Verbose instruction prefix",
+    ),
+    (
+        r"(?i)\bmake sure to\s+",
+        "",
+        0.94,
+        "Redundant instruction (standalone)",
     ),
     (
         r"(?i)It would be great if\s*",
@@ -246,6 +252,33 @@ pub static REDUNDANT_PHRASES: &[(&str, &str, f64, &str)] = &[
     // Verbose phrases
     (r"(?i)provide\s+detailed\s+suggestions\s+on\s+how\s+to\s+fix", "suggest fixes for", 0.89, "Concise phrasing"),
     (r"(?i)If\s+you\s+find\s+any\s+", "For any ", 0.84, "Passive conditional"),
+
+    // AGGRESSIVE v0.3: Ultra-compression patterns
+    // Apply these BEFORE other patterns for better matching
+
+    // Complete sentence compressions (most specific first)
+    (r"(?i)Provide\s+a\s+(?:very\s+)?detailed\s+(?:and\s+thorough\s+)?explanation\s+of\s+what\s+(?:the\s+)?code\s+does,?\s+how\s+it\s+works,?\s+and\s+why\s+it\s+was\s+implemented(?:\s+in\s+this\s+particular\s+way)?\.?",
+     "Explain: functionality, implementation, rationale.", 0.92, "Complete explanation compression"),
+
+    (r"(?i)look\s+into\s+(?:any\s+)?(?:potential\s+)?bugs?\s+or\s+issues\s+(?:that\s+you\s+might\s+find)?,?\s+and\s+(?:also\s+)?check\s+for\s+(?:any\s+)?performance\s+problems?\s+or\s+areas\s+where\s+(?:the\s+)?code\s+could\s+be\s+improved\s+or\s+optimized\.?",
+     "Identify: bugs, performance issues, improvements.", 0.91, "Combined bugs+performance compression"),
+
+    (r"(?i)Research\s+and\s+explain\s+whether\s+(?:this\s+)?code\s+follows\s+best\s+practices\s+and\s+coding\s+standards\.?",
+     "Verify best practices.", 0.90, "Research→Verify compression"),
+
+    (r"(?i)If\s+you\s+find\s+(?:any\s+)?problems?\s+or\s+issues?,?\s+(?:please\s+)?provide\s+detailed\s+suggestions\s+on\s+how\s+to\s+fix\s+them\.?",
+     "Suggest fixes.", 0.91, "Final sentence compression"),
+
+    // Partial phrase compressions (for cases where full match doesn't work)
+    (r"(?i)Provide\s+a\s+detailed\s+explanation\s+of\s+", "Explain: ", 0.89, "Verbose to colon format"),
+    (r"(?i)Look\s+into\s+any\s+", "Identify ", 0.87, "Look into→Identify"),
+    (r"(?i)check\s+for\s+any\s+", "", 0.86, "Redundant check phrase"),
+
+    // Context removals
+    (r"(?i)in\s+this\s+particular\s+way", "", 0.85, "Implied by context"),
+    (r"(?i)that\s+you\s+might\s+find", "", 0.84, "Implied by 'look'"),
+    (r"(?i)or\s+areas\s+where", "", 0.83, "Redundant qualifier"),
+    (r"(?i)best\s+practices\s+and\s+coding\s+standards", "best practices", 0.87, "Redundant pair"),
 ];
 
 /// Synonym pairs where consolidation saves tokens
