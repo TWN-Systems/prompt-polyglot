@@ -2,7 +2,9 @@
 
 > Optimize prompts with multilingual token compression and Bayesian confidence scoring
 
-**Version:** v0.3 (Aggressive Mode) | **Status:** Production-Ready (62/62 tests passing)
+**Version:** v0.4 (Consolidated - Database-Backed Patterns) | **Status:** Production-Ready (62/62 tests passing)
+
+⭐ **NEW in v0.4:** Database-backed pattern optimization with HITL feedback integration! See [CONSOLIDATED-ARCHITECTURE.md](./CONSOLIDATED-ARCHITECTURE.md) for details.
 
 ## Overview
 
@@ -65,6 +67,34 @@ Binaries will be available in `target/release/`:
 - `prompt-compress-server` - API server
 
 ## Quick Start
+
+### Database-Backed Pattern System (v0.4+)
+
+**NEW:** Patterns are now stored in SQLite and can be updated via HITL feedback!
+
+#### Setup (One-Time)
+
+1. **Run pattern migration:**
+   ```bash
+   cargo run --bin migrate_patterns -- atlas.db
+   ```
+   This migrates all 102 patterns from code into the database.
+
+2. **Use database-backed optimizer:**
+   ```rust
+   use prompt_compress::init_database_optimizer;
+
+   let mut optimizer = init_database_optimizer("atlas.db")?;
+   ```
+
+**Benefits:**
+- ✅ Patterns stored in database, not hardcoded
+- ✅ HITL feedback updates confidence automatically
+- ✅ Pattern usage tracking and statistics
+- ✅ Hot reload patterns without restart
+- ✅ Filter patterns by confidence threshold
+
+**See [CONSOLIDATED-ARCHITECTURE.md](./CONSOLIDATED-ARCHITECTURE.md) for full details.**
 
 ### CLI Usage
 
