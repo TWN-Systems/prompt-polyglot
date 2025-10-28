@@ -1005,6 +1005,74 @@ curl -X POST http://localhost:8080/api/v1/optimize \
   -d '{"prompt": "I would really appreciate if you could help me.", "output_language": "english"}'
 ```
 
+### Comprehensive Testing with Hugging Face Datasets
+
+For production-grade testing, we use real-world prompts from Hugging Face datasets. This provides statistical significance and catches edge cases that curated tests might miss.
+
+**Quick Setup:**
+
+```bash
+# Install dependencies
+pip install datasets tiktoken
+
+# Quick setup (downloads 1K samples per dataset)
+./scripts/quick_test_setup.sh
+
+# Or download full datasets manually (10K+ samples)
+python3 scripts/download_hf_datasets.py
+
+# Build comprehensive test corpus
+python3 scripts/build_test_corpus.py
+```
+
+**Two-Tier Testing Strategy:**
+
+| Tier | Purpose | When to Run | Duration |
+|------|---------|-------------|----------|
+| **Q1678** | Regression tests, development | Every commit | <1 min |
+| **HF Datasets** | Statistical validation, releases | Pre-release, nightly | 10-30 min |
+
+**Available Test Suites:**
+
+- **WildChat-10K**: Real user conversations (boilerplate-heavy)
+- **UltraChat-5K**: Multi-turn conversations
+- **Alpaca-5K**: Standardized instructions
+- **CodeMixed-3K**: Code + natural language (tests protected regions)
+- **Comprehensive**: Balanced corpus from all sources
+
+**Running Tests:**
+
+```bash
+# Quick regression test (Q1678)
+cargo test
+
+# Comprehensive integration test
+cargo test --suite comprehensive
+
+# Specific dataset
+cargo test --suite wildchat
+
+# Full suite (all datasets)
+cargo test --suite full
+```
+
+**Benchmarking:**
+
+```bash
+# Establish baseline
+prompt-compress benchmark \
+  --suite comprehensive \
+  --output benchmarks/baselines/v0.4.json
+
+# Compare against baseline
+prompt-compress benchmark \
+  --suite comprehensive \
+  --baseline benchmarks/baselines/v0.4.json \
+  --report comparison.md
+```
+
+**For detailed testing strategy, see:** [TESTING-STRATEGY.md](./TESTING-STRATEGY.md)
+
 ---
 
 ## Development Workflow

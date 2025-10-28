@@ -39,6 +39,15 @@ Welcome to the **prompt-compress** documentation! This directory contains compre
   - Skill composition and testing
   - Real-world examples
 
+## Testing & Validation
+
+- [TESTING-STRATEGY.md](./TESTING-STRATEGY.md) - **Comprehensive testing strategy** with Hugging Face datasets:
+  - Two-tier testing approach (Q1678 + HF datasets)
+  - Real-world prompt datasets (WildChat, UltraChat, Alpaca)
+  - Benchmarking and regression detection
+  - CI/CD integration
+  - Atlas training from HF data
+
 ## Test Results & Verification
 
 - [PHASE3-COMPLETE.md](./PHASE3-COMPLETE.md) - Phase 3 implementation and test results
@@ -87,6 +96,9 @@ Welcome to the **prompt-compress** documentation! This directory contains compre
 
 #### Run tests
 → See [CONTRIBUTORS.md - Testing](./CONTRIBUTORS.md#testing)
+
+#### Set up comprehensive testing
+→ Follow [TESTING-STRATEGY.md](./TESTING-STRATEGY.md)
 
 #### See test results and metrics
 → Read [TEST-RESULTS.md](./TEST-RESULTS.md) and [VERIFICATION-REPORT.md](./VERIFICATION-REPORT.md)
