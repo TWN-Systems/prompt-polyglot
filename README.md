@@ -4,7 +4,7 @@
 
 **Version:** v0.4 (Consolidated - Database-Backed Patterns) | **Status:** Production-Ready (62/62 tests passing)
 
-⭐ **NEW in v0.4:** Database-backed pattern optimization with HITL feedback integration! See [CONSOLIDATED-ARCHITECTURE.md](./CONSOLIDATED-ARCHITECTURE.md) for details.
+⭐ **NEW in v0.4:** Database-backed pattern optimization with HITL feedback integration! See [CONSOLIDATED-ARCHITECTURE.md](./docs/CONSOLIDATED-ARCHITECTURE.md) for details.
 
 ## Overview
 
@@ -94,7 +94,7 @@ Binaries will be available in `target/release/`:
 - ✅ Hot reload patterns without restart
 - ✅ Filter patterns by confidence threshold
 
-**See [CONSOLIDATED-ARCHITECTURE.md](./CONSOLIDATED-ARCHITECTURE.md) for full details.**
+**See [CONSOLIDATED-ARCHITECTURE.md](./docs/CONSOLIDATED-ARCHITECTURE.md) for full details.**
 
 ### CLI Usage
 
@@ -468,12 +468,18 @@ All optimizations maintain:
 4. **Measurable savings** - 15-40% token reduction verified
 5. **Evidence-based** - All patterns tested and validated
 
-## Verification Reports
+## Documentation
 
-See the test results for empirical validation:
-- `PHASE3-COMPLETE.md` - Phase 3 implementation and test results
-- `FINAL-SUMMARY.md` - Complete project summary with metrics
-- `tests/mandarin_efficiency_test.rs` - Mandarin token efficiency proofs
+See the comprehensive documentation in the `/docs` folder:
+- [QUICKSTART.md](./docs/QUICKSTART.md) - Quick start guide
+- [CONSOLIDATED-ARCHITECTURE.md](./docs/CONSOLIDATED-ARCHITECTURE.md) - Complete architecture overview
+- [CLAUDE.md](./docs/CLAUDE.md) - Detailed project specification
+- [PHASE3-COMPLETE.md](./docs/PHASE3-COMPLETE.md) - Phase 3 implementation and test results
+- [FINAL-SUMMARY.md](./docs/FINAL-SUMMARY.md) - Complete project summary with metrics
+- [TEST-RESULTS.md](./docs/TEST-RESULTS.md) - Test results and verification
+- [VERIFICATION-REPORT.md](./docs/VERIFICATION-REPORT.md) - Verification report
+- [AGGRESSIVE-MODE-SUMMARY.md](./docs/AGGRESSIVE-MODE-SUMMARY.md) - Aggressive mode documentation
+- [CONSOLIDATION-SUMMARY.md](./docs/CONSOLIDATION-SUMMARY.md) - Consolidation summary
 
 ## License
 
@@ -481,9 +487,10 @@ MIT
 
 ## Contributing
 
-Contributions welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions welcome! Please see [CONTRIBUTORS.md](./docs/CONTRIBUTORS.md) for developer guidelines.
 
 ## Support
 
 - Issues: [GitHub Issues](https://github.com/your-org/prompt-polyglot/issues)
-- Documentation: See [CLAUDE.md](CLAUDE.md) for detailed specification
+- Documentation: See [/docs](./docs) folder for comprehensive documentation
+- Specification: See [CLAUDE.md](./docs/CLAUDE.md) for detailed specification
