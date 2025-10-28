@@ -1,0 +1,3 @@
+Analyze this code. Provide and thorough explanation functionality, implementation, rationale. Make sure to Identify: potential bugs, performance issues, improvements. I would like you to Verify best practices. If you find issues, suggestions on how to fix them.
+
+[output_language: english]

@@ -1,3 +1,3 @@
-Please analyze this code. Provide a detailed explanation of what the code does, how it works, and why it was implemented in this particular way. Look into any bugs or issues that you might find, and check for any performance problems or areas where the code could be improved or optimized. Research and explain whether this code follows best practices and coding standards. If you find any problems or issues, please provide detailed suggestions on how to fix them.
+Analyze this code. Explain: functionality, implementation, rationale. Identify: bugs, performance issues, improvements. Verify best practices. Suggest fixes.
 
 [output_language: english]

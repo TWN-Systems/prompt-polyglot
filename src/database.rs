@@ -246,6 +246,159 @@ impl Database {
     pub fn connection(&self) -> &Connection {
         &self.conn
     }
+
+    /// Load all active patterns from database
+    pub fn load_patterns(&self) -> Result<Vec<PatternRecord>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, pattern_type, regex_pattern, replacement, base_confidence, reasoning,
+                    applied_count, accepted_count, rejected_count
+             FROM patterns
+             WHERE enabled = 1
+             ORDER BY base_confidence DESC"
+        )?;
+
+        let patterns = stmt
+            .query_map([], |row| {
+                Ok(PatternRecord {
+                    id: row.get(0)?,
+                    pattern_type: row.get(1)?,
+                    regex_pattern: row.get(2)?,
+                    replacement: row.get(3)?,
+                    base_confidence: row.get(4)?,
+                    reasoning: row.get(5)?,
+                    applied_count: row.get::<_, i64>(6)? as usize,
+                    accepted_count: row.get::<_, i64>(7)? as usize,
+                    rejected_count: row.get::<_, i64>(8)? as usize,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(patterns)
+    }
+
+    /// Load patterns filtered by type
+    pub fn load_patterns_by_type(&self, pattern_type: &str) -> Result<Vec<PatternRecord>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, pattern_type, regex_pattern, replacement, base_confidence, reasoning,
+                    applied_count, accepted_count, rejected_count
+             FROM patterns
+             WHERE enabled = 1 AND pattern_type = ?1
+             ORDER BY base_confidence DESC"
+        )?;
+
+        let patterns = stmt
+            .query_map([pattern_type], |row| {
+                Ok(PatternRecord {
+                    id: row.get(0)?,
+                    pattern_type: row.get(1)?,
+                    regex_pattern: row.get(2)?,
+                    replacement: row.get(3)?,
+                    base_confidence: row.get(4)?,
+                    reasoning: row.get(5)?,
+                    applied_count: row.get::<_, i64>(6)? as usize,
+                    accepted_count: row.get::<_, i64>(7)? as usize,
+                    rejected_count: row.get::<_, i64>(8)? as usize,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(patterns)
+    }
+
+    /// Load patterns with minimum confidence threshold
+    pub fn load_patterns_with_confidence(&self, min_confidence: f64) -> Result<Vec<PatternRecord>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, pattern_type, regex_pattern, replacement, base_confidence, reasoning,
+                    applied_count, accepted_count, rejected_count
+             FROM patterns
+             WHERE enabled = 1 AND base_confidence >= ?1
+             ORDER BY base_confidence DESC"
+        )?;
+
+        let patterns = stmt
+            .query_map([min_confidence], |row| {
+                Ok(PatternRecord {
+                    id: row.get(0)?,
+                    pattern_type: row.get(1)?,
+                    regex_pattern: row.get(2)?,
+                    replacement: row.get(3)?,
+                    base_confidence: row.get(4)?,
+                    reasoning: row.get(5)?,
+                    applied_count: row.get::<_, i64>(6)? as usize,
+                    accepted_count: row.get::<_, i64>(7)? as usize,
+                    rejected_count: row.get::<_, i64>(8)? as usize,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(patterns)
+    }
+
+    /// Record pattern application
+    pub fn record_pattern_application(&self, pattern_id: i64) -> Result<()> {
+        self.conn.execute(
+            "UPDATE patterns SET applied_count = applied_count + 1 WHERE id = ?1",
+            [pattern_id],
+        )?;
+        Ok(())
+    }
+
+    /// Record HITL decision
+    pub fn record_hitl_decision(&self, decision: &HitlDecision) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO hitl_decisions
+             (pattern_id, session_id, original_text, optimized_text, decision,
+              user_alternative, context_before, context_after)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            rusqlite::params![
+                decision.pattern_id,
+                &decision.session_id,
+                &decision.original_text,
+                &decision.optimized_text,
+                &decision.decision,
+                &decision.user_alternative,
+                &decision.context_before,
+                &decision.context_after,
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// Get pattern statistics
+    pub fn get_pattern_stats(&self) -> Result<Vec<PatternTypeStats>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT pattern_type, COUNT(*), AVG(base_confidence),
+                    SUM(applied_count), SUM(accepted_count), SUM(rejected_count)
+             FROM patterns
+             WHERE enabled = 1
+             GROUP BY pattern_type
+             ORDER BY COUNT(*) DESC"
+        )?;
+
+        let stats = stmt
+            .query_map([], |row| {
+                let accepted = row.get::<_, i64>(4)? as usize;
+                let rejected = row.get::<_, i64>(5)? as usize;
+                let acceptance_rate = if accepted + rejected > 0 {
+                    accepted as f64 / (accepted + rejected) as f64
+                } else {
+                    0.0
+                };
+
+                Ok(PatternTypeStats {
+                    pattern_type: row.get(0)?,
+                    total_patterns: row.get::<_, i64>(1)? as usize,
+                    avg_confidence: row.get(2)?,
+                    total_applications: row.get::<_, i64>(3)? as usize,
+                    total_accepted: accepted,
+                    total_rejected: rejected,
+                    acceptance_rate,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(stats)
+    }
 }
 
 /// Concept data structure
@@ -274,6 +427,45 @@ pub struct DatabaseStats {
     pub total_concepts: usize,
     pub total_surface_forms: usize,
     pub cache_size: usize,
+}
+
+/// Pattern record from database
+#[derive(Debug, Clone)]
+pub struct PatternRecord {
+    pub id: i64,
+    pub pattern_type: String,
+    pub regex_pattern: String,
+    pub replacement: String,
+    pub base_confidence: f64,
+    pub reasoning: String,
+    pub applied_count: usize,
+    pub accepted_count: usize,
+    pub rejected_count: usize,
+}
+
+/// HITL decision record
+#[derive(Debug, Clone)]
+pub struct HitlDecision {
+    pub pattern_id: i64,
+    pub session_id: String,
+    pub original_text: String,
+    pub optimized_text: String,
+    pub decision: String, // "accept", "reject", "modify"
+    pub user_alternative: Option<String>,
+    pub context_before: String,
+    pub context_after: String,
+}
+
+/// Pattern type statistics
+#[derive(Debug, Clone)]
+pub struct PatternTypeStats {
+    pub pattern_type: String,
+    pub total_patterns: usize,
+    pub avg_confidence: f64,
+    pub total_applications: usize,
+    pub total_accepted: usize,
+    pub total_rejected: usize,
+    pub acceptance_rate: f64,
 }
 
 #[cfg(test)]
