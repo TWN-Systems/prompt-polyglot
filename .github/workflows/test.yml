@@ -1,0 +1,241 @@
+name: Test
+
+on:
+  push:
+    branches: [ main, develop, claude/* ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  quick-test:
+    name: Quick Tests (Q1678)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Run cargo fmt check
+        run: cargo fmt -- --check
+
+      - name: Run cargo clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Run unit tests
+        run: cargo test --verbose
+        timeout-minutes: 10
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: target/debug/deps/*.xml
+
+  integration-test:
+    name: Integration Tests (HF Datasets)
+    runs-on: ubuntu-latest
+    # Only run on main branch pushes, scheduled runs, or manual triggers
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: |
+          pip install datasets tiktoken tqdm
+
+      - name: Download HF datasets (quick mode)
+        run: |
+          python3 scripts/download_hf_datasets.py --quick
+        timeout-minutes: 20
+        env:
+          HF_DATASETS_CACHE: ~/.cache/huggingface/datasets
+
+      - name: Build test corpus
+        run: |
+          python3 scripts/build_test_corpus.py --samples-per-category 500
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Cache cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-integration-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run integration tests
+        run: |
+          # Run tests with comprehensive test suite
+          cargo test --release --verbose
+        timeout-minutes: 45
+
+      - name: Upload integration results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: integration-results
+          path: |
+            data/benchmarks/current/*.json
+            reports/*.md
+
+  nightly-benchmark:
+    name: Nightly Benchmark
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install datasets tiktoken tqdm
+
+      - name: Download full HF datasets
+        run: |
+          python3 scripts/download_hf_datasets.py
+        timeout-minutes: 60
+
+      - name: Build comprehensive corpus
+        run: |
+          python3 scripts/build_test_corpus.py --samples-per-category 1000
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Run full benchmark
+        run: |
+          cargo test --release --verbose
+        timeout-minutes: 90
+
+      - name: Archive benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: nightly-benchmark-${{ github.run_number }}
+          path: |
+            data/benchmarks/**/*.json
+            reports/*.md
+          retention-days: 30
+
+      - name: Comment on commit (if PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            // Read benchmark results and post as comment
+            // TODO: Implement benchmark result parsing and commenting
+
+  pre-release:
+    name: Pre-Release Validation
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install datasets tiktoken tqdm
+
+      - name: Download full datasets
+        run: |
+          python3 scripts/download_hf_datasets.py
+        timeout-minutes: 60
+
+      - name: Build corpus
+        run: |
+          python3 scripts/build_test_corpus.py
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Run full test suite
+        run: |
+          cargo test --release --verbose
+        timeout-minutes: 120
+
+      - name: Build release binaries
+        run: |
+          cargo build --release
+
+      - name: Validate release
+        run: |
+          # Verify binaries work
+          ./target/release/prompt-compress --version
+          ./target/release/prompt-compress-server --version || true
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: release-${{ github.ref_name }}
+          path: |
+            target/release/prompt-compress
+            target/release/prompt-compress-server
+            data/benchmarks/**/*.json
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Run cargo audit
+        uses: actions-rs/audit-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
